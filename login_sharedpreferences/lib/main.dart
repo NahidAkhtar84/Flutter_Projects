@@ -1,21 +1,39 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
-import 'package:login_register/register_page.dart';
+import 'package:login_register/credential.dart';
+import 'package:login_register/sharedPref.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'main.dart';
+import 'login_page.dart';
 
-class LoginPage extends StatefulWidget {
+void main() => runApp(MyApp());
+
+class MyApp extends StatelessWidget {
   @override
-  _LoginPageState createState() => _LoginPageState();
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: "Auth System",
+      debugShowCheckedModeBanner: false,
+      home: MainPage(),
+    );
+  }
 }
 
-class _LoginPageState extends State<LoginPage> {
+class MainPage extends StatefulWidget {
+  @override
+  _MainPageState createState() => _MainPageState();
+}
 
+class _MainPageState extends State<MainPage> {
+
+  //SharedPreferences sharedPreferences;
+  SharedPref sharedPref = SharedPref();
+  Credential userSave = Credential();
   bool _isLoading = false;
   var errorMsg;
-  final TextEditingController emailController = new TextEditingController();
+  final TextEditingController mobileController = new TextEditingController();
   final TextEditingController passwordController = new TextEditingController();
 
   @override
@@ -26,9 +44,9 @@ class _LoginPageState extends State<LoginPage> {
         child: _isLoading ? Center(child: CircularProgressIndicator()) : ListView(
           children: <Widget>[
             TextFormField(
-              controller: emailController,
+              controller: mobileController,
               decoration: InputDecoration(
-                hintText: "Email",
+                hintText: "Phone No",
               ),
             ),
             SizedBox(height: 30.0),
@@ -45,8 +63,9 @@ class _LoginPageState extends State<LoginPage> {
                 setState(() {
                   _isLoading = true;
                 });
-                signIn(emailController.text, passwordController.text);
+                signIn(mobileController.text, passwordController.text);
               },
+              color: Colors.deepOrangeAccent,
               child: Text("Sign In", style: TextStyle(color: Colors.black)),
             ),
             errorMsg == null? Container(): Text(
@@ -56,44 +75,32 @@ class _LoginPageState extends State<LoginPage> {
                 fontWeight: FontWeight.bold,
               ),
             ),
-            SizedBox(height: 20,),
-            Text(
-              'Not have an account? Create one,,,',
-              style: TextStyle(
-                color: Colors.blueAccent,
-                fontSize: 15,
-              ),
-            ),
-            RaisedButton(
-              onPressed: () {
-                Navigator.of(context).pushAndRemoveUntil(MaterialPageRoute(builder: (BuildContext context) => RegisterPage()), (Route<dynamic> route) => false);
-              },
-              elevation: 0.0,
-              color: Colors.purple,
-              child: Text("Register", style: TextStyle(color: Colors.white70)),
-            ),
           ],
         ),
       ),
     );
   }
 
-  signIn(String email, pass) async {
-    SharedPreferences sharedPreferences = await SharedPreferences.getInstance();
+  signIn(String mobile, pass) async {
+    //SharedPreferences sharedPreferences = await SharedPreferences.getInstance();
     Map data = {
-      'email': email,
+      'mobile': mobile,
       'password': pass
     };
     var jsonResponse = null;
-    var response = await http.post("https://reqres.in/api/login", body: data);
+    var response = await http.post("http://medimate.skoder.tech/api/user-login", body: data);
     if(response.statusCode == 200) {
       jsonResponse = json.decode(response.body);
+      print(jsonResponse);
       if(jsonResponse != null) {
         setState(() {
           _isLoading = false;
         });
-        sharedPreferences.setString("token", jsonResponse['token']);
-        Navigator.of(context).pushAndRemoveUntil(MaterialPageRoute(builder: (BuildContext context) => MainPage()), (Route<dynamic> route) => false);
+        //sharedPreferences.setString("token", jsonResponse['data']['token']);
+        userSave.token = jsonResponse['data']['token'];
+        userSave.username = jsonResponse['data']['user']['name'];
+        sharedPref.save("user", userSave);
+        Navigator.of(context).pushAndRemoveUntil(MaterialPageRoute(builder: (BuildContext context) => Ground()), (Route<dynamic> route) => false);
       }
     }
     else {
@@ -104,7 +111,7 @@ class _LoginPageState extends State<LoginPage> {
       print("The error message is: ${response.body}");
     }
   }
-
 }
+
 
 
